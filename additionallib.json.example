@@ -1,0 +1,15 @@
+{
+  "libraries": [
+    {
+      "name": "python-geoaddress",
+      "path": "../python-geoaddress",
+      "description": "Address verification and geocoding library"
+    },
+    {
+      "name": "python-missive",
+      "path": "../python-missive",
+      "description": "Messaging library"
+    }
+  ]
+}
+

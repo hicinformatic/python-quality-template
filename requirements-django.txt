@@ -1,0 +1,7 @@
+# Django dependencies
+# Install with: pip install -r requirements-django.txt
+
+Django>=4.2.0
+pytest-django>=4.8.0
+django-stubs>=5.0.0
+
