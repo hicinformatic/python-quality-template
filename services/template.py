@@ -72,6 +72,87 @@ def sync_service_py(template_path: Path, target_path: Path) -> bool:
     return True
 
 
+def _find_package_dir(base_path: Path) -> Path | None:
+    """Find the package directory in src/.
+
+    Args:
+        base_path: Base path (project root)
+
+    Returns:
+        Path to package directory in src/, or None if not found
+    """
+    src_path = base_path / "src"
+    if not src_path.exists():
+        return None
+
+    # Find first directory in src/ that contains __init__.py
+    for item in src_path.iterdir():
+        if item.is_dir() and not item.name.startswith("_"):
+            init_file = item / "__init__.py"
+            if init_file.exists():
+                return item
+
+    return None
+
+
+def sync_cli(template_path: Path, target_path: Path) -> bool:
+    """Sync CLI files (cli.py, __main__.py, commands/) from template to target project.
+
+    Args:
+        template_path: Path to template project
+        target_path: Path to target project
+
+    Returns:
+        True if synchronization succeeded, False otherwise
+    """
+    template_package = _find_package_dir(template_path)
+    target_package = _find_package_dir(target_path)
+
+    if not template_package:
+        print_warning("Template package directory not found in src/. Skipping CLI sync.")
+        return True  # Not an error, just skip
+
+    if not target_package:
+        print_warning("Target package directory not found in src/. Skipping CLI sync.")
+        return True  # Not an error, just skip
+
+    files_copied = 0
+    dirs_copied = 0
+
+    # Sync cli.py
+    template_cli = template_package / "cli.py"
+    target_cli = target_package / "cli.py"
+    if template_cli.exists():
+        shutil.copy2(template_cli, target_cli)
+        files_copied += 1
+        print_info(f"Copied: {target_package.name}/cli.py")
+
+    # Sync __main__.py
+    template_main = template_package / "__main__.py"
+    target_main = target_package / "__main__.py"
+    if template_main.exists():
+        shutil.copy2(template_main, target_main)
+        files_copied += 1
+        print_info(f"Copied: {target_package.name}/__main__.py")
+
+    # Sync commands/ directory
+    template_commands = template_package / "commands"
+    target_commands = target_package / "commands"
+    if template_commands.exists() and template_commands.is_dir():
+        if target_commands.exists():
+            shutil.rmtree(target_commands)
+        shutil.copytree(template_commands, target_commands, dirs_exist_ok=True)
+        dirs_copied += 1
+        print_info(f"Copied directory: {target_package.name}/commands/")
+
+    if files_copied > 0 or dirs_copied > 0:
+        print_success(f"Synced CLI: {files_copied} files, {dirs_copied} directories")
+    else:
+        print_info("No CLI files to sync (template may not have CLI structure yet)")
+
+    return True
+
+
 def sync(template_path: str | Path) -> bool:
     """Synchronize template files to current project.
 
@@ -102,6 +183,7 @@ def sync(template_path: str | Path) -> bool:
     success = True
     success &= sync_services(template_path, target_path)
     success &= sync_service_py(template_path, target_path)
+    success &= sync_cli(template_path, target_path)
 
     if success:
         print_success("Template synchronization completed successfully")

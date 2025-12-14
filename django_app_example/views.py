@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 
-def hello_world(request):
+def hello_world(_request):
     """Hello World view."""
     return HttpResponse("Hello World!")
 
