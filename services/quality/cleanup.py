@@ -4,25 +4,24 @@ from __future__ import annotations
 
 import platform
 
-from .. import utils
+# Use common imports from quality.common
+from services.quality import common
 
-VENV_BIN = utils.VENV_BIN
-
-# Import utility functions
-print_info = utils.print_info
-print_success = utils.print_success
-print_error = utils.print_error
-print_warning = utils.print_warning
-print_separator = utils.print_separator
-venv_exists = utils.venv_exists
-get_code_directories = utils.get_code_directories
-run_command = utils.run_command
+# Import from common
+VENV_BIN = common.VENV_BIN
+print_info = common.print_info
+print_success = common.print_success
+print_error = common.print_error
+print_warning = common.print_warning
+print_separator = common.print_separator
+venv_exists = common.venv_exists
+get_code_directories = common.get_code_directories
+run_command = common.run_command
 
 
 def task_cleanup() -> bool:
     """Detect unused code, imports, and redundancies."""
-    if not venv_exists():
-        print_error("Virtual environment not found. Please create one first.")
+    if not common.check_venv_required():
         return False
 
     print_separator()

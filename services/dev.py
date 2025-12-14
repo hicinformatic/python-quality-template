@@ -6,34 +6,24 @@ This is a template script that provides common development tasks.
 
 from __future__ import annotations
 
-import importlib.util
 import sys
 from pathlib import Path
-from typing import Sequence
 
-# Load modules dynamically to handle .services directory
-_services_dir = Path(__file__).resolve().parent
-_project_root = _services_dir.parent
 
-# Load utils module
-_utils_spec = importlib.util.spec_from_file_location(
-    "services.utils", _services_dir / "utils.py"
-)
-utils = importlib.util.module_from_spec(_utils_spec)
-sys.modules["services.utils"] = utils
-_utils_spec.loader.exec_module(utils)
+def _load_modules() -> tuple:
+    """Load required modules after adding parent to sys.path."""
+    _services_dir = Path(__file__).resolve().parent
+    _project_root = _services_dir.parent
+    if str(_project_root) not in sys.path:
+        sys.path.insert(0, str(_project_root))
 
-# Load dev submodules
-for module_name in ["build", "clean", "env", "help", "lib"]:
-    _module_spec = importlib.util.spec_from_file_location(
-        f"services.dev.{module_name}", _services_dir / "dev" / f"{module_name}.py"
-    )
-    _module = importlib.util.module_from_spec(_module_spec)
-    sys.modules[f"services.dev.{module_name}"] = _module
-    _module_spec.loader.exec_module(_module)
+    from services import utils
+    from services.dev import build, clean, env, help, lib
 
-# Import after loading
-from services.dev import build, clean, env, help, lib
+    return utils, build, clean, env, help, lib
+
+
+utils, build, clean, env, help, lib = _load_modules()
 
 # Import utility functions for error handling
 print_info = utils.print_info
@@ -71,7 +61,7 @@ COMMANDS = {
 }
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point."""
     args = list(argv if argv is not None else sys.argv[1:])
 
@@ -85,17 +75,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print_info("Run `python dev.py help` to list available commands.")
         return 1
 
-    try:
-        success = COMMANDS[command]()
-        return 0 if success else 1
-    except KeyboardInterrupt:
-        print_warning("\nOperation cancelled by user.")
-        return 130
-    except Exception as exc:
-        print_error(f"Unexpected error: {exc}")
-        import traceback
-        traceback.print_exc()
-        return 1
+    return utils.run_service_command(COMMANDS[command])
 
 
 if __name__ == "__main__":

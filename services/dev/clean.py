@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 
-from .. import utils
+from services import utils
 
 PROJECT_ROOT = utils.PROJECT_ROOT
 

@@ -2,8 +2,9 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-import django
 from pathlib import Path
+
+import django
 
 # Load .env file if it exists
 try:
@@ -18,7 +19,7 @@ except ImportError:
 def create_superuser():
     """Creates default superuser if none exists."""
     from django.contrib.auth.models import User
-    
+
     if not User.objects.filter(is_superuser=True).exists():
         print("📦 Creating superuser: admin/admin")
         User.objects.create_superuser('admin', 'admin@example.com', 'admin')
@@ -32,7 +33,7 @@ def create_superuser():
 def main():
     """Runs administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
-    
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -41,14 +42,13 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
-    
-    if len(sys.argv) > 1 and sys.argv[1] in ['migrate', 'runserver']:
-        if sys.argv[1] == 'migrate':
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'migrate':
             execute_from_command_line(sys.argv)
             django.setup()
             create_superuser()
             return
-    
+
     execute_from_command_line(sys.argv)
 
 

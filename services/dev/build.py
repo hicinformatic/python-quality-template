@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .. import utils
+from services import utils
+
 from .env import install_build_dependencies
 
 VENV_BIN = utils.VENV_BIN

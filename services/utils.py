@@ -12,7 +12,10 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # Load .env file if it exists
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -146,15 +149,38 @@ def get_code_directories() -> list[str]:
                     if init_file.exists():
                         code_dirs.append(str(item))
             # If no packages found, use the directory itself if it has Python files
-            if not code_dirs and path != PROJECT_ROOT:
-                if any(path.glob("*.py")):
-                    code_dirs.append(str(path))
+            if not code_dirs and path != PROJECT_ROOT and any(path.glob("*.py")):
+                code_dirs.append(str(path))
 
     # Fallback to current directory if nothing found
     if not code_dirs:
         code_dirs = ["."]
 
     return code_dirs
+
+
+def build_semgrep_command(semgrep: Path, targets: list[str]) -> list[str]:
+    """Build semgrep command with appropriate configs.
+
+    Args:
+        semgrep: Path to semgrep executable
+        targets: List of target directories to scan
+
+    Returns:
+        Complete semgrep command as list of strings
+    """
+    semgrep_cmd = [str(semgrep), "scan"]
+    semgrep_configs = []
+    local_semgrep = PROJECT_ROOT / ".semgrep.yaml"
+    if local_semgrep.exists():
+        semgrep_configs.append(str(local_semgrep))
+    else:
+        semgrep_configs.append("p/default")
+    semgrep_configs.extend(["p/python", "p/supply-chain"])
+    for config in semgrep_configs:
+        semgrep_cmd += ["--config", config]
+    semgrep_cmd += targets
+    return semgrep_cmd
 
 
 def format_results_table(
@@ -178,7 +204,7 @@ def format_results_table(
         lines.append("=" * 70)
 
     # Determine column widths
-    tool_width = max(len(str(k)) for k in results.keys()) + 2
+    tool_width = max(len(str(k)) for k in results) + 2
     if tool_width < 20:
         tool_width = 20
 
@@ -273,7 +299,7 @@ def summarize_results(results: dict[str, bool | dict[str, Any]]) -> dict[str, An
     total_errors = 0
     total_warnings = 0
 
-    for tool, result in results.items():
+    for _tool, result in results.items():
         if isinstance(result, dict):
             status = result.get("status", False)
             total_errors += result.get("errors", 0)
@@ -314,4 +340,116 @@ def print_summary(summary: dict[str, Any]) -> None:
     if summary.get("total_warnings", 0) > 0:
         print(f"{YELLOW}Total warnings: {summary['total_warnings']}{NC}")
     print_separator()
+
+
+def load_service_utils() -> Any:
+    """Load utils module after adding project root to sys.path.
+
+    This is a common pattern used across service modules to ensure
+    proper import resolution.
+
+    Returns:
+        The utils module
+    """
+    from pathlib import Path
+
+    _services_dir = Path(__file__).resolve().parent
+    _project_root = _services_dir.parent
+    if str(_project_root) not in sys.path:
+        sys.path.insert(0, str(_project_root))
+
+    from services import utils
+    return utils
+
+
+def run_service_command(command_func: Any, *args: Any, **kwargs: Any) -> int:
+    """Run a service command with standardized error handling.
+
+    This function provides consistent error handling for all service commands,
+    including KeyboardInterrupt and general exception handling.
+
+    Args:
+        command_func: The command function to execute
+        *args: Positional arguments to pass to the command
+        **kwargs: Keyword arguments to pass to the command
+
+    Returns:
+        Exit code: 0 for success, 1 for failure, 130 for KeyboardInterrupt
+    """
+    try:
+        success = command_func(*args, **kwargs)
+        return 0 if success else 1
+    except KeyboardInterrupt:
+        print_warning("\nOperation cancelled by user.")
+        return 130
+    except Exception as exc:
+        print_error(f"Error: {exc}")
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+
+def check_venv_required() -> bool:
+    """Check if virtual environment exists, print error if not.
+
+    This is a common pattern used at the start of task functions
+    that require a virtual environment.
+
+    Returns:
+        True if venv exists, False otherwise
+    """
+    if not venv_exists():
+        print_error("Virtual environment not found. Please create one first.")
+        return False
+    return True
+
+
+def check_github_cli() -> bool:
+    """Check if GitHub CLI (gh) is available.
+
+    This is a common pattern used in publish modules to verify
+    GitHub CLI is installed before attempting to use it.
+
+    Returns:
+        True if GitHub CLI is available, False otherwise
+    """
+    import subprocess
+
+    gh_result = subprocess.run(
+        ["gh", "--version"],
+        capture_output=True,
+        text=True,
+    )
+    if gh_result.returncode != 0:
+        print_error("GitHub CLI (gh) not found. Install from: https://cli.github.com/")
+        return False
+    return True
+
+
+def get_quality_common_imports() -> dict[str, Any]:
+    """Get common imports for quality modules.
+
+    This function returns a dictionary with commonly used imports
+    for quality modules to reduce duplication. Modules can use:
+    `common = utils.get_quality_common_imports()` and then access
+    functions via `common['print_info']`, etc.
+
+    Returns:
+        Dictionary with common imports (PROJECT_ROOT, VENV_BIN, print functions, etc.)
+    """
+    return {
+        "PROJECT_ROOT": PROJECT_ROOT,
+        "VENV_BIN": VENV_BIN,
+        "print_info": print_info,
+        "print_success": print_success,
+        "print_error": print_error,
+        "print_warning": print_warning,
+        "print_header": print_header,
+        "print_separator": print_separator,
+        "venv_exists": venv_exists,
+        "get_code_directories": get_code_directories,
+        "run_command": run_command,
+        "check_venv_required": check_venv_required,
+    }
 

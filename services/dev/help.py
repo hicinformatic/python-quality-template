@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .. import utils
+from services import utils
 
 # Import utility functions
 print_info = utils.print_info
@@ -30,7 +30,7 @@ def task_help() -> bool:
     print_success("Packaging:")
     print("  build             Build sdist and wheel")
     print("")
-    
+
     print_success("Library Management:")
     print("  update-lib            Install or update a library from local directory (editable mode)")
     print("                        Usage: dev update-lib path/to/library")

@@ -4,23 +4,38 @@ from __future__ import annotations
 
 import json
 import os
-import platform
 import subprocess
+import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
-from .. import utils
-from .release import get_project_version
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-PROJECT_ROOT = utils.PROJECT_ROOT
 
-# Import utility functions
-print_info = utils.print_info
-print_success = utils.print_success
-print_error = utils.print_error
-print_warning = utils.print_warning
-print_header = utils.print_header
-print_separator = utils.print_separator
+def _load_modules() -> tuple:
+    """Load required modules after adding parent to sys.path."""
+    _services_dir = Path(__file__).resolve().parent.parent
+    _project_root = _services_dir.parent
+    if str(_project_root) not in sys.path:
+        sys.path.insert(0, str(_project_root))
+
+    from services import utils
+    from services.publish import common
+    from services.publish.release import get_project_version
+    return utils, common, get_project_version
+
+
+utils, common, get_project_version = _load_modules()
+
+# Import from common
+PROJECT_ROOT = common.PROJECT_ROOT
+print_info = common.print_info
+print_success = common.print_success
+print_error = common.print_error
+print_warning = common.print_warning
+print_header = common.print_header
+print_separator = common.print_separator
 
 
 def format_release_message(version: str | None = None, changelog: str = "") -> str:
@@ -109,7 +124,11 @@ def task_devto(message: str | None = None, title: str | None = None) -> bool:
         title = f"{PROJECT_ROOT.name} {version} Released"
 
     # Use dev.to API
-    import requests
+    try:
+        import requests  # type: ignore[import-untyped]
+    except ImportError:
+        print_error("requests not installed. Install with: pip install requests")
+        return False
 
     url = "https://dev.to/api/articles"
     headers = {
@@ -126,7 +145,7 @@ def task_devto(message: str | None = None, title: str | None = None) -> bool:
     }
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=30)
         response.raise_for_status()
         result = response.json()
         print_success("Article published to dev.to!")
@@ -179,7 +198,7 @@ def task_linkedin(message: str | None = None) -> bool:
     }
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=30)
         response.raise_for_status()
         print_success("Post published to LinkedIn!")
         return True
@@ -229,13 +248,7 @@ def task_github_discussion(message: str | None = None, category: str = "Announce
     print_info("Creating GitHub Discussion...")
 
     # Check if GitHub CLI is available
-    gh_result = subprocess.run(
-        ["gh", "--version"],
-        capture_output=True,
-        text=True,
-    )
-    if gh_result.returncode != 0:
-        print_error("GitHub CLI (gh) not found. Install from: https://cli.github.com/")
+    if not utils.check_github_cli():
         return False
 
     if not message:
@@ -346,7 +359,7 @@ def task_publish_all(message: str | None = None) -> bool:
     print_info(f"  {message}\n")
 
     # Map platform names to their task functions
-    platforms = {
+    platforms: dict[str, Callable[[str | None], bool]] = {
         "Twitter/X": task_twitter,
         "dev.to": task_devto,
         "LinkedIn": task_linkedin,

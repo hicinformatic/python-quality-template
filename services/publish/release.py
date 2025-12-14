@@ -2,35 +2,39 @@
 
 from __future__ import annotations
 
-import json
 import platform
 import subprocess
-import sys
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .. import utils
-from ..dev.build import task_build
+from services import utils
+from services.dev.build import task_build
 
-PROJECT_ROOT = utils.PROJECT_ROOT
+if TYPE_CHECKING:
+    from pathlib import Path
+
+# Use common imports from publish.common
+from services.publish import common
+
+# Import from common
+PROJECT_ROOT = common.PROJECT_ROOT
+print_info = common.print_info
+print_success = common.print_success
+print_error = common.print_error
+print_warning = common.print_warning
+print_header = common.print_header
+print_separator = common.print_separator
+
+# Import additional utils not in common
 VENV_BIN = utils.VENV_BIN
 PYTHON = utils.PYTHON
 PIP = utils.PIP
-
-# Import utility functions
-print_info = utils.print_info
-print_success = utils.print_success
-print_error = utils.print_error
-print_warning = utils.print_warning
-print_header = utils.print_header
-print_separator = utils.print_separator
 venv_exists = utils.venv_exists
 run_command = utils.run_command
 
 
 def find_pyproject_toml() -> Path | None:
     """Find pyproject.toml file in project root.
-    
+
     Note: The template provides pyproject-djangoapp.toml and pyproject-lib.toml
     as examples. Developers should rename the appropriate one to pyproject.toml
     at the project root.
@@ -41,16 +45,16 @@ def find_pyproject_toml() -> Path | None:
     return None
 
 
-def get_project_info() -> dict[str, Any] | None:
-    """Get project information from pyproject.toml.
-    
-    The template provides pyproject-djangoapp.toml and pyproject-lib.toml as examples.
-    Developers should rename the appropriate one to pyproject.toml at the project root.
-    """
-    pyproject_path = find_pyproject_toml()
-    if not pyproject_path:
-        return None
+def _check_is_django(dependencies: list[str]) -> bool:
+    """Check if Django is in dependencies."""
+    if not dependencies:
+        return False
+    deps_str = " ".join(str(dep).lower() for dep in dependencies)
+    return "django" in deps_str
 
+
+def _parse_project_info_with_tomli(pyproject_path: Path) -> dict[str, Any] | None:
+    """Parse project info using tomli library."""
     try:
         import tomli
 
@@ -59,55 +63,68 @@ def get_project_info() -> dict[str, Any] | None:
 
         project_data = data.get("project", {})
         dependencies = project_data.get("dependencies", [])
-        
-        # Check if Django is in dependencies
-        is_django = False
-        if dependencies:
-            deps_str = " ".join(str(dep).lower() for dep in dependencies)
-            is_django = "django" in deps_str
-        
-        # Check for src/ layout (common for Python libraries)
-        has_src_layout = (PROJECT_ROOT / "src").exists() and (PROJECT_ROOT / "src").is_dir()
-        
+
         return {
             "version": project_data.get("version"),
             "name": project_data.get("name"),
             "description": project_data.get("description"),
-            "is_django": is_django,
-            "has_src_layout": has_src_layout,
+            "is_django": _check_is_django(dependencies),
+            "has_src_layout": (PROJECT_ROOT / "src").exists() and (PROJECT_ROOT / "src").is_dir(),
         }
     except ImportError:
-        # Fallback to basic parsing without tomli
-        try:
-            with open(pyproject_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                version = None
-                name = None
-                is_django = "Django" in content or "django" in content.lower()
-
-                for line in content.split("\n"):
-                    line = line.strip()
-                    if line.startswith("version") and "=" in line:
-                        parts = line.split("=")
-                        if len(parts) == 2:
-                            version = parts[1].strip().strip('"').strip("'")
-                    elif line.startswith("name") and "=" in line:
-                        parts = line.split("=")
-                        if len(parts) == 2:
-                            name = parts[1].strip().strip('"').strip("'")
-
-                return {
-                    "version": version,
-                    "name": name,
-                    "description": None,
-                    "is_django": is_django,
-                    "has_src_layout": (PROJECT_ROOT / "src").exists() and (PROJECT_ROOT / "src").is_dir(),
-                }
-        except Exception:
-            return None
-    except Exception as e:
-        print_error(f"Error reading pyproject.toml: {e}")
         return None
+    except Exception as e:
+        print_error(f"Error reading pyproject.toml with tomli: {e}")
+        return None
+
+
+def _parse_project_info_fallback(pyproject_path: Path) -> dict[str, Any] | None:
+    """Fallback parsing without tomli."""
+    try:
+        with open(pyproject_path, encoding="utf-8") as f:
+            content = f.read()
+
+        version = None
+        name = None
+        is_django = "Django" in content or "django" in content.lower()
+
+        for line in content.split("\n"):
+            line = line.strip()
+            if line.startswith("version") and "=" in line:
+                parts = line.split("=")
+                if len(parts) == 2:
+                    version = parts[1].strip().strip('"').strip("'")
+            elif line.startswith("name") and "=" in line:
+                parts = line.split("=")
+                if len(parts) == 2:
+                    name = parts[1].strip().strip('"').strip("'")
+
+        return {
+            "version": version,
+            "name": name,
+            "description": None,
+            "is_django": is_django,
+            "has_src_layout": (PROJECT_ROOT / "src").exists() and (PROJECT_ROOT / "src").is_dir(),
+        }
+    except Exception:
+        return None
+
+
+def get_project_info() -> dict[str, Any] | None:
+    """Get project information from pyproject.toml.
+
+    The template provides pyproject-djangoapp.toml and pyproject-lib.toml as examples.
+    Developers should rename the appropriate one to pyproject.toml at the project root.
+    """
+    pyproject_path = find_pyproject_toml()
+    if not pyproject_path:
+        return None
+
+    result = _parse_project_info_with_tomli(pyproject_path)
+    if result is not None:
+        return result
+
+    return _parse_project_info_fallback(pyproject_path)
 
 
 def get_project_version() -> str | None:
@@ -286,7 +303,7 @@ def task_upload_pypi() -> bool:
     print_warning("  1. Updated version in pyproject.toml")
     print_warning("  2. Updated CHANGELOG.md")
     print_warning("  3. Run all tests and quality checks")
-    response = input("Press Enter to continue, or Ctrl+C to cancel... ")
+    input("Press Enter to continue, or Ctrl+C to cancel... ")
 
     print_info("Uploading to PyPI...")
 
@@ -304,6 +321,38 @@ def task_upload_pypi() -> bool:
     return success
 
 
+def _check_github_cli() -> bool:
+    """Check if GitHub CLI is available."""
+    if not utils.check_github_cli():
+        print_info("Alternatively, create release manually at: https://github.com/<owner>/<repo>/releases/new")
+        return False
+    return True
+
+
+def _read_release_notes(version: str, tag: str) -> str:
+    """Read release notes from CHANGELOG.md."""
+    changelog_path = PROJECT_ROOT / "CHANGELOG.md"
+    if not changelog_path.exists():
+        return f"Release {version}"
+
+    try:
+        with open(changelog_path, encoding="utf-8") as f:
+            content = f.read()
+
+        start = content.find(f"## {version}") or content.find(f"## {tag}")
+        if start == -1:
+            return f"Release {version}"
+
+        end = content.find("## ", start + 1)
+        if end == -1:
+            return content[start:].strip()
+
+        return content[start:end].strip()
+    except Exception as e:
+        print_warning(f"Could not read CHANGELOG.md: {e}")
+        return f"Release {version}"
+
+
 def task_github_release() -> bool:
     """Create a GitHub release."""
     version = get_project_version()
@@ -315,42 +364,12 @@ def task_github_release() -> bool:
     if not tag:
         return False
 
-    # Check if GitHub CLI is available
-    gh_result = subprocess.run(
-        ["gh", "--version"],
-        capture_output=True,
-        text=True,
-    )
-    if gh_result.returncode != 0:
-        print_error("GitHub CLI (gh) not found. Install from: https://cli.github.com/")
-        print_info("Alternatively, create release manually at: https://github.com/<owner>/<repo>/releases/new")
+    if not _check_github_cli():
         return False
 
     print_info(f"Creating GitHub release for {tag}...")
+    notes = _read_release_notes(version, tag)
 
-    # Try to read release notes from CHANGELOG.md
-    changelog_path = PROJECT_ROOT / "CHANGELOG.md"
-    notes = ""
-    if changelog_path.exists():
-        try:
-            with open(changelog_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                # Try to extract notes for this version
-                # This is a simple implementation - can be improved
-                if f"## {version}" in content or f"## {tag}" in content:
-                    # Extract section for this version
-                    start = content.find(f"## {version}") or content.find(f"## {tag}")
-                    if start != -1:
-                        end = content.find("## ", start + 1)
-                        if end != -1:
-                            notes = content[start:end].strip()
-        except Exception as e:
-            print_warning(f"Could not read CHANGELOG.md: {e}")
-
-    if not notes:
-        notes = f"Release {version}"
-
-    # Create release with GitHub CLI
     cmd = ["gh", "release", "create", tag, "--title", f"Release {version}", "--notes", notes]
     success, _ = run_command(cmd, check=False)
 

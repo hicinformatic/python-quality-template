@@ -16,10 +16,27 @@ Examples:
 from __future__ import annotations
 
 import sys
-from typing import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-from . import utils
-from .publish import release, socialnetwork
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+
+_services_dir = Path(__file__).resolve().parent
+_project_root = _services_dir.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+
+def _load_modules() -> tuple:
+    """Load required modules after adding parent to sys.path."""
+    from services import utils
+    from services.publish import release, socialnetwork
+    return utils, release, socialnetwork
+
+
+utils, release, socialnetwork = _load_modules()
 
 # Import utility functions
 print_error = utils.print_error
@@ -119,18 +136,7 @@ def main() -> int:
         print_info("Run 'python publish.py help' to see available commands")
         return 1
 
-    try:
-        success = COMMANDS[command]()
-        return 0 if success else 1
-    except KeyboardInterrupt:
-        print_warning("\nOperation cancelled by user.")
-        return 130
-    except Exception as exc:
-        print_error(f"Error: {exc}")
-        import traceback
-
-        traceback.print_exc()
-        return 1
+    return utils.run_service_command(COMMANDS[command])
 
 
 if __name__ == "__main__":

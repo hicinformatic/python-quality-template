@@ -15,12 +15,27 @@ Examples:
 
 from __future__ import annotations
 
-import platform
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
 
-from . import utils
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+
+_services_dir = Path(__file__).resolve().parent
+_project_root = _services_dir.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+
+def _load_modules() -> tuple:
+    """Load required modules after adding parent to sys.path."""
+    from services import utils
+    return utils
+
+
+utils = _load_modules()
 
 # Import utility functions
 print_error = utils.print_error
@@ -36,7 +51,7 @@ VENV_BIN = utils.VENV_BIN
 PYTHON = utils.PYTHON
 
 # Path to manage.py
-MANAGE_PY = PROJECT_ROOT / ".services" / "django" / "manage.py"
+MANAGE_PY = PROJECT_ROOT / "services" / "django" / "manage.py"
 
 
 def task_help() -> bool:
@@ -206,30 +221,10 @@ def main() -> int:
 
     # Check if it's a known command
     if command in COMMANDS:
-        try:
-            success = COMMANDS[command]()
-            return 0 if success else 1
-        except KeyboardInterrupt:
-            print_warning("\nOperation cancelled by user.")
-            return 130
-        except Exception as exc:
-            print_error(f"Error: {exc}")
-            import traceback
-            traceback.print_exc()
-            return 1
+        return utils.run_service_command(COMMANDS[command])
     else:
         # Try as a generic Django command
-        try:
-            success = task_generic()
-            return 0 if success else 1
-        except KeyboardInterrupt:
-            print_warning("\nOperation cancelled by user.")
-            return 130
-        except Exception as exc:
-            print_error(f"Error: {exc}")
-            import traceback
-            traceback.print_exc()
-            return 1
+        return utils.run_service_command(task_generic)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Service router script for Python projects.
 
-Routes commands to appropriate service scripts in .services/ directory.
+Routes commands to appropriate service scripts in services/ directory.
 Usage:
     ./service.py quality lint
     ./service.py dev install-dev
@@ -13,18 +13,20 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-SERVICES_DIR = PROJECT_ROOT / ".services"
+SERVICES_DIR = PROJECT_ROOT / "services"
 
 
 def main() -> int:
     """Main entry point."""
-    if len(sys.argv) < 3:
-        print("Usage: ./service.py <service> <command> [args...]")
+    if len(sys.argv) < 2:
+        print("Usage: ./service.py <service> [command] [args...]")
         print("\nServices:")
         print("  quality  Quality checks (lint, security, test, complexity, cleanup)")
         print("  dev      Development tasks (venv, install, install-dev, clean, build)")
         print("  django   Django management commands (runserver, makemigrations, migrate, etc.)")
         print("  publish  Publishing (releases, social media announcements)")
+        print("  cli      Library CLI commands")
+        print("  template Template synchronization (sync files from python-quality-template)")
         print("\nExamples:")
         print("  ./service.py quality lint")
         print("  ./service.py quality security")
@@ -34,6 +36,8 @@ def main() -> int:
         print("  ./service.py django makemigrations")
         print("  ./service.py publish release-full")
         print("  ./service.py publish social-all")
+        print("  ./service.py cli hello")
+        print("  ./service.py template sync /path/to/python-quality-template")
         return 1
 
     service = sys.argv[1].lower()
@@ -45,11 +49,13 @@ def main() -> int:
         "dev": SERVICES_DIR / "dev.py",
         "django": SERVICES_DIR / "django.py",
         "publish": SERVICES_DIR / "publish.py",
+        "cli": SERVICES_DIR / "cli.py",
+        "template": SERVICES_DIR / "template.py",
     }
 
     if service not in service_scripts:
         print(f"Error: Unknown service '{service}'")
-        print("Available services: quality, dev, django, publish")
+        print("Available services: quality, dev, django, publish, cli, template")
         return 1
 
     script_path = service_scripts[service]

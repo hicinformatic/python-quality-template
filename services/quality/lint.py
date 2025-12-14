@@ -3,23 +3,24 @@
 from __future__ import annotations
 
 import platform
-from pathlib import Path
 
-from .. import utils
+from services import utils
+from services.quality import common
 
-PROJECT_ROOT = utils.PROJECT_ROOT
-VENV_BIN = utils.VENV_BIN
+# Import from common
+PROJECT_ROOT = common.PROJECT_ROOT
+VENV_BIN = common.VENV_BIN
+print_info = common.print_info
+print_success = common.print_success
+print_error = common.print_error
+print_warning = common.print_warning
+print_header = common.print_header
+print_separator = common.print_separator
+venv_exists = common.venv_exists
+get_code_directories = common.get_code_directories
+run_command = common.run_command
 
-# Import utility functions
-print_info = utils.print_info
-print_success = utils.print_success
-print_error = utils.print_error
-print_warning = utils.print_warning
-print_header = utils.print_header
-print_separator = utils.print_separator
-venv_exists = utils.venv_exists
-get_code_directories = utils.get_code_directories
-run_command = utils.run_command
+# Import additional utils not in common
 print_results = utils.print_results
 summarize_results = utils.summarize_results
 print_summary = utils.print_summary
@@ -27,8 +28,7 @@ print_summary = utils.print_summary
 
 def task_lint() -> bool:
     """Run linting checks."""
-    if not venv_exists():
-        print_error("Virtual environment not found. Please create one first.")
+    if not common.check_venv_required():
         return False
 
     print_separator()
@@ -87,17 +87,7 @@ def task_lint() -> bool:
     print("\n" + "-" * 70)
     print_info("4/4 - Running Semgrep (Code Quality & Security Patterns)")
     print("-" * 70)
-    semgrep_cmd = [str(semgrep), "scan"]
-    semgrep_configs = []
-    local_semgrep = PROJECT_ROOT / ".semgrep.yaml"
-    if local_semgrep.exists():
-        semgrep_configs.append(str(local_semgrep))
-    else:
-        semgrep_configs.append("p/default")
-    semgrep_configs.extend(["p/python", "p/supply-chain"])
-    for config in semgrep_configs:
-        semgrep_cmd += ["--config", config]
-    semgrep_cmd += targets
+    semgrep_cmd = utils.build_semgrep_command(semgrep, targets)
     success, _ = run_command(semgrep_cmd, check=False, capture_output=True)
     if success:
         print_success("✓ Semgrep: No issues found")
@@ -107,8 +97,8 @@ def task_lint() -> bool:
         results["semgrep"] = {"status": False, "errors": 1, "warnings": 0}
 
     # Print results summary
-    print_results(results, title="Linting Results", format="table")
-    summary = summarize_results(results)
+    print_results(results, title="Linting Results", format="table")  # type: ignore[arg-type]
+    summary = summarize_results(results)  # type: ignore[arg-type]
     print_summary(summary)
 
     return all(r.get("status", False) for r in results.values())
