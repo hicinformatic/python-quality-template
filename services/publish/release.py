@@ -189,7 +189,7 @@ def task_show_info() -> bool:
         print_info("If you're using this template:")
         print_info("  1. Choose your project type (Django app or Python library)")
         print_info("  2. Rename pyproject-djangoapp.toml or pyproject-lib.toml to pyproject.toml")
-        print_info("  3. Remove the example you don't need (django_app_example/ or src/lib_example/)")
+        print_info("  3. Remove the example you don't need (django_myapp/ or src/mypackage/)")
         return False
 
     print_separator()
@@ -217,7 +217,7 @@ def task_git_tag() -> bool:
             print_info("If you're using this template:")
             print_info("  1. Choose your project type (Django app or Python library)")
             print_info("  2. Rename pyproject-djangoapp.toml or pyproject-lib.toml to pyproject.toml")
-            print_info("  3. Remove the example you don't need (django_app_example/ or src/lib_example/)")
+            print_info("  3. Remove the example you don't need (django_myapp/ or src/mypackage/)")
         return False
 
     tag = get_git_tag(version)

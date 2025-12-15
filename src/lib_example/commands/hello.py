@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from lib_example.commands import register_command
+# ruff: noqa: TID252  # Relative imports needed for dynamic package name
+from ..commands import register_command
 
 
 def _hello_command(_args: list[str]) -> bool:
@@ -14,7 +15,8 @@ def _hello_command(_args: list[str]) -> bool:
     Returns:
         True on success
     """
-    from lib_example import hello_world
+    # ruff: noqa: TID252  # Relative imports needed for dynamic package name
+    from .. import hello_world
 
     print(hello_world())
     return True

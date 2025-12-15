@@ -9,6 +9,37 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
 
+def _get_package_name() -> str:
+    """Get the package name dynamically.
+
+    Returns:
+        Package name (e.g., 'mypackage')
+    """
+    # Get package name from current module's package
+    # When cli.py is in a package, __package__ is the package name
+    # e.g., 'mypackage' or any other package name
+    package = __package__
+    if package:
+        # Extract root package name (first part before any dots)
+        # For 'mypackage.cli', this gives 'mypackage'
+        return package.split(".")[0]
+    # Fallback: use module name if package is not available
+    # For '__main__' or direct execution, try to extract from __name__
+    if __name__ and "." in __name__:
+        return __name__.split(".")[0]
+    # Last fallback: try to get from __file__ path
+    try:
+        from pathlib import Path
+        if __file__:
+            # Get parent directory name (should be the package name)
+            parent_dir = Path(__file__).parent.name
+            if parent_dir and parent_dir != "cli.py":
+                return parent_dir
+    except Exception:
+        pass
+    return "mypackage"  # Final fallback
+
+
 def _discover_commands() -> dict[str, dict[str, Callable[[list[str]], bool] | str]]:
     """Discover commands from commands module.
 
@@ -62,14 +93,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = _discover_commands()
 
     if not args:
-        print("Usage: lib_example <command> [args...]")
+        package_name = _get_package_name()
+        print(f"Usage: {package_name} <command> [args...]")
         print("\nCommands:")
         for cmd_name, cmd_info in sorted(commands.items()):
             description = cmd_info.get("description", "")
             print(f"  {cmd_name:<12} {description}")
         print("\nExamples:")
         for cmd_name in list(commands.keys())[:3]:
-            print(f"  lib_example {cmd_name}")
+            print(f"  {package_name} {cmd_name}")
         return 1
 
     command = args[0].lower()

@@ -1,5 +1,3 @@
-"""Tests for django_app_example."""
-
 from django.test import TestCase
 from django.urls import reverse
 

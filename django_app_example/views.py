@@ -1,5 +1,3 @@
-"""Views for django_app_example."""
-
 from django.http import HttpResponse
 from django.shortcuts import render
 

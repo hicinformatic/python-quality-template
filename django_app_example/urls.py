@@ -1,5 +1,3 @@
-"""URL configuration for django_app_example."""
-
 from django.urls import path
 
 from . import views

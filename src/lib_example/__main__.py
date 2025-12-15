@@ -1,5 +1,3 @@
-"""Entry point for running lib_example as a module."""
-
 from __future__ import annotations
 
 from .cli import main

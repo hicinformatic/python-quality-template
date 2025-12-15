@@ -1,5 +1,3 @@
-"""Models for django_app_example."""
-
 from django.db import models
 
 
