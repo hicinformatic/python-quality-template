@@ -133,7 +133,10 @@ def run_command(
 
 
 def get_code_directories() -> list[str]:
-    """Get list of code directories to check."""
+    """Get list of code directories to check.
+
+    Returns relative paths from PROJECT_ROOT for better compatibility with tools.
+    """
     code_dirs = []
     for potential_dir in ["src", "."]:
         path = PROJECT_ROOT / potential_dir
@@ -147,10 +150,16 @@ def get_code_directories() -> list[str]:
                 ):
                     init_file = item / "__init__.py"
                     if init_file.exists():
-                        code_dirs.append(str(item))
+                        # Return relative path from PROJECT_ROOT
+                        code_dirs.append(str(item.relative_to(PROJECT_ROOT)))
             # If no packages found, use the directory itself if it has Python files
             if not code_dirs and path != PROJECT_ROOT and any(path.glob("*.py")):
-                code_dirs.append(str(path))
+                code_dirs.append(str(path.relative_to(PROJECT_ROOT)))
+
+    # Also check for django_app_example at root level
+    django_app = PROJECT_ROOT / "django_app_example"
+    if django_app.exists() and django_app.is_dir() and "django_app_example" not in code_dirs:
+        code_dirs.append("django_app_example")
 
     # Fallback to current directory if nothing found
     if not code_dirs:

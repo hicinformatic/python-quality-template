@@ -1,3 +1,4 @@
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 """Social media publishing for release announcements."""
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ def _load_modules() -> tuple:
 utils, common, get_project_version = _load_modules()
 
 # Import from common
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 PROJECT_ROOT = common.PROJECT_ROOT
 print_info = common.print_info
 print_success = common.print_success

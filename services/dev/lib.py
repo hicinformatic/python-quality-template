@@ -1,3 +1,4 @@
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 """Library update tasks."""
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from services import utils
 from services.dev import common
 
 # Import from common
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 PROJECT_ROOT = common.PROJECT_ROOT
 PIP = common.PIP
 print_info = common.print_info

@@ -1,3 +1,4 @@
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 """Release management for Git, PyPI, and other platforms."""
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
 from services.publish import common
 
 # Import from common
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 PROJECT_ROOT = common.PROJECT_ROOT
 print_info = common.print_info
 print_success = common.print_success

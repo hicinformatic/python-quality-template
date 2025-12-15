@@ -1,3 +1,4 @@
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 """Environment management tasks."""
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
 from services.dev import common
 
 # Import from common
+# pylint: disable=R0801  # Duplicate code acceptable for common imports
 PROJECT_ROOT = common.PROJECT_ROOT
 VENV_BIN = common.VENV_BIN
 VENV_DIR = common.VENV_DIR
@@ -136,8 +138,8 @@ def task_install_dev() -> bool:
     _install_requirements_file(PROJECT_ROOT / "requirements.txt")
 
     if _install_dev_dependencies_from_file():
-        print_success("Development installation complete.")
-        return True
+            print_success("Development installation complete.")
+            return True
 
     print_warning("Failed to install from requirements-quality.txt, trying fallback methods...")
     _install_dev_dependencies_fallback()
