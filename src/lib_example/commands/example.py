@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from ..commands import register_command
+from lib_example.commands import register_command
 
 
 def _example_command(args: list[str]) -> bool:
     """Example command that demonstrates argument handling.
-    
+
     This command shows how to handle command-line arguments.
-    
+
     Args:
         args: Command arguments
-        
+
     Returns:
         True on success, False on failure
-        
+
     Usage:
         mypackage example
         mypackage example --name "John"
@@ -23,7 +23,7 @@ def _example_command(args: list[str]) -> bool:
     """
     name = "World"
     verbose = False
-    
+
     # Simple argument parsing
     i = 0
     while i < len(args):
@@ -41,12 +41,12 @@ def _example_command(args: list[str]) -> bool:
             print(f"Unknown argument: {arg}")
             print("Usage: mypackage example [--name NAME] [--verbose]")
             return False
-    
+
     if verbose:
         print(f"Hello, {name}! (verbose mode)")
     else:
         print(f"Hello, {name}!")
-    
+
     return True
 
 

@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 class CommandInfo(TypedDict):
     """Command information structure."""
-
     func: Callable[[list[str]], bool]
     description: str
 
@@ -57,26 +56,26 @@ def _auto_discover_commands() -> None:
     # Import all modules in this package
     import importlib
     import pkgutil
-    from contextlib import suppress
-
-    # Security: Build whitelist from actual .py files in commands directory
-    # to prevent arbitrary code execution via importlib.import_module()
-    allowed_modules: set[str] = set()
-    if package_path.exists():
-        for py_file in package_path.glob("*.py"):
-            if py_file.stem != "__init__":
-                allowed_modules.add(py_file.stem)
 
     for _, modname, ispkg in pkgutil.iter_modules([str(package_path)]):
-        if not ispkg and modname in allowed_modules:
+        if not ispkg and modname != "__init__":
+            from contextlib import suppress
             with suppress(Exception):
-                # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
-                # modname is validated against whitelist built from actual .py files
-                # in the commands directory, preventing arbitrary code execution
                 importlib.import_module(f"{package}.{modname}")
                 # Commands should register themselves on import
 
 
 # Auto-discover on import
 _auto_discover_commands()
+
+
+def get_registered_commands() -> dict[str, CommandInfo]:
+    """Get all registered commands.
+
+    Returns:
+        Dictionary of command names to CommandInfo.
+    """
+    # Ensure commands are loaded
+    _auto_discover_commands()
+    return REGISTERED_COMMANDS.copy()
 

@@ -2,45 +2,29 @@
 
 from __future__ import annotations
 
-# ruff: noqa: TID252  # Relative imports needed for dynamic package name
-from ..commands import register_command
-
-
-def _get_package_name() -> str:
-    """Get the package name dynamically.
-
-    Returns:
-        Package name (e.g., 'mypackage')
-    """
-    # Get package name from current module's package
-    package = __package__
-    if package:
-        # Extract root package name (first part before any dots)
-        # For 'mypackage.commands.version', this gives 'mypackage'
-        return package.split(".")[0]
-    # Fallback: use module name if package is not available
-    if __name__ and "." in __name__:
-        return __name__.split(".")[0]
-    return "mypackage"  # Final fallback
+from ..cli import _get_current_package_name, _get_package_name  # noqa: TID252
+from ..commands import register_command  # noqa: TID252
 
 
 def _version_command(_args: list[str]) -> bool:
-    """Show version information.
-
-    Args:
-        _args: Command arguments (unused for this command)
-
-    Returns:
-        True on success
-    """
-    # ruff: noqa: TID252  # Relative imports needed for dynamic package name
-    from .. import __version__
-
+    """Show version information."""
     package_name = _get_package_name()
-    print(f"{package_name} version {__version__}")
+    current_package = _get_current_package_name()
+
+    if package_name != current_package:
+        try:
+            package_module = __import__(package_name, fromlist=["__version__"])
+            version = getattr(package_module, "__version__", "unknown")
+            print(f"{package_name} version {version}")
+            return True
+        except ImportError:
+            pass
+
+    current_module = __import__(current_package, fromlist=["__version__"])
+    version = getattr(current_module, "__version__", "unknown")
+    print(f"{package_name} version {version}")
     return True
 
 
-# Auto-register on import - explicit and type-safe
 register_command("version", _version_command, "Show version information")
 
